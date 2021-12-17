@@ -1,0 +1,145 @@
+{
+	"variables": {
+		"region": "{{env `AWS_REGION`}}",
+		"ami_name": "{{env `AMI_NAME2`}}",
+		"build_num": "{{env `BUILD_NUMBER`}}",
+		"winrm_pass": "{{env `WINRM_PASS`}}",
+		"ppd_account_id": "976734374871",
+		"prd_account_id": "256519926576",
+		"cwp_version": "{{env `CWP_VERSION`}}",
+		"aws_arn": "{{env `ARN`}}",
+		"aws_extid": "{{env `EXTID`}}",
+        "aws_access_key": "{{env `AWS_ACCESS_KEY_ID`}}",
+        "aws_secret_key": "{{env `AWS_SECRET_ACCESS_KEY`}}",
+        "aws_session_token": "{{env `AWS_SESSION_TOKEN`}}"
+	},
+	"builders": [{
+		"type": "amazon-ebs",
+		"access_key": "{{user `aws_access_key`}}",
+		"secret_key": "{{user `aws_secret_key`}}",
+		"token": "{{user `aws_session_token`}}",
+		"region": "{{ user `region` }}",
+		"source_ami_filter": {
+			"filters": {
+				"name": "Windows_Server-2019-English-Full-Base-*",
+				"root-device-type": "ebs"
+			},
+			"owners": [
+				"amazon"
+			],
+			"most_recent": true
+		},
+		"instance_type": "t2.xlarge",
+		"subnet_id": "subnet-0a0ca3ec598904e1c",
+		"ami_name": "{{ user `ami_name` }}",
+		"ami_users": [
+			"{{user `ppd_account_id`}}",
+			"{{user `prd_account_id`}}"
+		],
+		"communicator": "winrm",
+		"winrm_use_ssl": true,
+		"winrm_insecure": true,
+		"user_data_file": "./scripts/SetUpWinRM.ps1",
+			"tags": {
+				"Name": "{{user `ami_name`}}",
+				"Owner": "meenakshi.shankar@dxc.com",
+				"Solution": "ventura",
+				"Account": "leveraged",
+				"Component": "ventura",
+				"Contact": "gregg.koenig@dxc.com",
+				"Service": "fa"
+			},
+            "run_tags":{
+                "Name":"AMI builder {{user `ami_name`}}",
+                "Account":"leveraged",
+                "Owner": "meenakshi.shankar@dxc.com",
+                "Platform": "windows",
+                "Solution": "ventura",
+                "Service": "fa",
+                "Lightsout": "true"
+             },
+			"winrm_username": "Administrator",
+			"winrm_password": "{{ user `winrm_pass` }}",
+			"winrm_timeout": "12h",
+		"launch_block_device_mappings": [
+			{
+				"device_name": "/dev/sda1",
+				"volume_size": 50,
+				"volume_type": "gp2",
+				"delete_on_termination": true
+			},
+			{
+				"device_name": "/dev/sda2",
+				"volume_size": 60,
+				"volume_type": "gp2",
+				"delete_on_termination": true
+			}
+		]
+	}],
+	"provisioners": [
+		{	
+			"type": "file",
+			"source": "pbps-ami-ventura.json",
+			"destination": "c:\\Temp\\pbps-ami-ventura.json"
+		},
+		{	
+			"type": "powershell",
+			"inline": [
+				"get-content c:\\Temp\\pbps-ami-ventura.json"
+			]
+		},
+		{
+			"type": "file",
+			"source": "./scripts",
+			"destination": "C:\\Temp"
+		},
+		{
+			"type": "powershell",
+			"skip_clean": "true",			
+			"environment_vars": [
+				"AWS_REGION={{user `aws_region`}}",
+				"AWS_ACCESS_KEY_ID={{user `aws_access_key`}}",
+				"AWS_SECRET_KEY_ID={{user `aws_secret_key`}}",
+				"AWS_SESSION_TOKEN={{user `aws_session_token`}}",
+				"CWP_VERSION={{user `cwp_version`}}"
+			],
+			"scripts": [
+				"./scripts/000_initialize_disk.ps1",
+				"./scripts/010_disable_uac.ps1",
+                "./scripts/cis_install_ssm_agent.ps1",
+				"./scripts/install_awscli.ps1",				
+				"./scripts/015_disable_windowsdefender_fw.ps1",
+				"./scripts/016_disable_windowsdefender_av.ps1",
+				"./scripts/200_install_winfeature.ps1",
+				"./scripts/201_install_choco_pkgs.ps1",
+				"./scripts/025_configure_cwagent.ps1",
+				"./scripts/030_download_cwp-zipfiles.ps1",
+				"./scripts/035_extract_cwp-zipfiles.ps1",
+				"./scripts/202_install_java.ps1"
+			]
+		},
+		{
+			"type": "windows-restart"
+		},
+		{
+			"type": "powershell",
+			"inline": [
+				"Get-ChildItem -Path D:\\cwp\\windows -Recurse -Force",
+				"Set-Location D:\\cwp\\windows\\{{user `cwp_version` }}",
+				"cmd.exe /c 'D:\\cwp\\windows\\{{user `cwp_version` }}\\installagent.bat -image' -Wait"
+			]
+		},
+		{
+			"type": "powershell",
+			"skip_clean": "true",
+			"scripts": [
+				"./scripts/499_sysprep.ps1"
+			]
+		}
+	],
+	"post-processors": [
+		{
+		"type": "manifest"
+		}
+	]
+}

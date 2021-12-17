@@ -1,0 +1,36 @@
+{
+	"metrics": {
+		"append_dimensions": {
+			"InstanceId": "${aws:InstanceId}",
+			"InstanceType": "${aws:InstanceType}"
+		},
+		"metrics_collected": {
+			"LogicalDisk": {
+				"measurement": [
+					"% Free Space"
+				],
+				"metrics_collection_interval": 60,
+				"resources": [
+					"*"
+				]
+			},
+			"Memory": {
+				"measurement": [
+					"% Committed Bytes In Use"
+				],
+				"metrics_collection_interval": 60
+			},
+			"Processor": {
+				"measurement": [
+					"% User Time",
+					"% Idle Time",
+					"% Interrupt Time"
+				],
+				"metrics_collection_interval": 60,
+				"resources": [
+					"*"
+				]
+			}
+		}
+	}
+}

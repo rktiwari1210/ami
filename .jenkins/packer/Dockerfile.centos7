@@ -1,0 +1,75 @@
+FROM centos:7
+MAINTAINER "Andy Burrows" <andy.burrows@dxc.com>
+
+
+ARG JENKINS_GID=1002
+ARG JENKINS_UID=1002
+
+# Change to root user
+USER root
+
+RUN groupadd -g ${JENKINS_GID:-1002} jenkins
+RUN useradd -m -u ${JENKINS_UID:-1002} -g jenkins jenkins 
+
+#Workaround for 
+#Errors validating build 'amazon-ebs'. 2 error(s) occurred:
+#* user: Current not implemented on linux/amd64
+#* user: could not determine current user from environment.
+
+ENV USER=jenkins
+
+ARG PACKER_VERSION=1.5.1
+
+#enable epel for pip
+RUN yum -y install git epel-release && \
+	yum clean all && \
+	rm -rf /var/cache/yum
+
+RUN yum -y install \
+	bash \
+	ca-certificates \
+	git \
+	openssl \
+	unzip \
+	wget \
+	python-pip \
+	gcc \
+	openssl-devel \
+	python-devel \
+	libffi-devel \
+	krb5-devel \
+	krb5-libs \
+	krb5-workstation \
+	telnet \
+	bind-utils \
+	net-tools \
+	conntrack-tools \
+	jq \
+	curl \
+	zip \
+	sudo && \
+	yum clean all && \
+	rm -rf /var/cache/yum	
+
+
+RUN curl -O https://releases.hashicorp.com/packer/${PACKER_VERSION}/packer_${PACKER_VERSION}_linux_amd64.zip &&\
+    yum install -y unzip && \
+    unzip -d /usr/local packer_${PACKER_VERSION}_linux_amd64.zip && \
+    ln -s /usr/local/packer /usr/local/bin/packer.io
+
+ADD requirements.txt .
+
+#openshift/k8s anisble module need a later version of setuptools
+#RUN pip install setuptools --upgrade    
+
+RUN pip install -r requirements.txt
+
+#RUN mkdir /home/jenkins/.aws && \
+#        echo -e "[default]\nregion = us-east-1\noutput = json" >  /home/jenkins/.aws/config && \
+#        chown jenkins:jenkins /home/jenkins/.aws/config
+
+WORKDIR /build
+
+#drop back to jenkins
+USER jenkins
+

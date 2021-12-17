@@ -1,0 +1,13 @@
+###### Requirements without Version Specifiers ######`
+setuptools
+ansible-lint
+yamllint
+boto3
+requests
+junit-xml
+pylint
+s3cmd
+python-magic
+
+###### Requirements with Version Specifiers ######`
+awscli==1.18.140
